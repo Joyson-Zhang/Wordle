@@ -28,6 +28,7 @@ Open `two-player.html` to play the turn-based two-player version.
 - If both players run out of guesses, the answer is revealed
 - Each turn has a 30-second timer
 - Each player has a separate board and on-screen keyboard
+- Keyboard color hints are shared, so both players can use clues from every guess
 
 ## How to Play
 

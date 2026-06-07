@@ -437,12 +437,12 @@
     let secondsLeft = TURN_SECONDS;
     let timerId = null;
     let players = [];
+    let sharedKeyStatuses = {};
 
     function createPlayerState() {
       return {
         currentGuess: "",
-        currentRow: 0,
-        keyStatuses: {}
+        currentRow: 0
       };
     }
 
@@ -451,6 +451,7 @@
       activePlayer = 0;
       gameOver = false;
       players = Array.from({ length: PLAYER_COUNT }, createPlayerState);
+      sharedKeyStatuses = {};
       secondsLeft = TURN_SECONDS;
 
       buildBoards();
@@ -656,25 +657,26 @@
 
         setTimeout(() => {
           tile.classList.add("flip", status);
-          updateKeyStatus(playerIndex, letter, status);
+          updateKeyStatus(letter, status);
         }, colIndex * 110);
       });
     }
 
-    function updateKeyStatus(playerIndex, letter, status) {
-      const player = players[playerIndex];
-      const previous = player.keyStatuses[letter];
+    function updateKeyStatus(letter, status) {
+      const previous = sharedKeyStatuses[letter];
 
       if (!previous || STATUS_RANK[status] > STATUS_RANK[previous]) {
-        player.keyStatuses[letter] = status;
+        sharedKeyStatuses[letter] = status;
       }
 
-      const key = keyboards[playerIndex].querySelector(`[data-key="${letter}"]`);
+      keyboards.forEach((keyboard) => {
+        const key = keyboard.querySelector(`[data-key="${letter}"]`);
 
-      if (key) {
-        key.classList.remove("absent", "present", "correct");
-        key.classList.add(player.keyStatuses[letter]);
-      }
+        if (key) {
+          key.classList.remove("absent", "present", "correct");
+          key.classList.add(sharedKeyStatuses[letter]);
+        }
+      });
     }
 
     function switchTurn(prefixMessage) {
