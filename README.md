@@ -1,4 +1,4 @@
-Wordle Mini Game
+#Wordle Mini Game
 
 This project is a complete Wordle-style mini-game built in one file:
 
