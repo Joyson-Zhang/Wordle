@@ -50,7 +50,7 @@
 
     header {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto;
+      grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
       gap: 16px;
       padding-bottom: 16px;
@@ -107,6 +107,67 @@
       padding: 0 15px;
       background: var(--text);
       color: white;
+      align-self: end;
+    }
+
+    #settings {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      padding: 14px;
+      border: 2px solid rgba(32, 36, 43, 0.12);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.76);
+      box-shadow: 0 12px 32px rgba(25, 32, 41, 0.08);
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      font-weight: 800;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 42px;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      background: var(--panel);
+      color: var(--text);
+      font: inherit;
+      font-size: 1rem;
+      font-weight: 800;
+      padding: 8px 10px;
+    }
+
+    input:focus,
+    select:focus {
+      outline: 3px solid rgba(47, 102, 144, 0.28);
+      outline-offset: 1px;
+      border-color: var(--accent);
+    }
+
+    #match-summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .summary-item {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 12px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 0 10px 26px rgba(25, 32, 41, 0.08);
+      font-weight: 800;
+      text-align: center;
     }
 
     #message {
@@ -191,12 +252,12 @@
       grid-template-rows: repeat(6, 1fr);
       gap: 8px;
       width: min(100%, 330px);
-      aspect-ratio: 5 / 6.45;
+      aspect-ratio: var(--word-length, 5) / 6.45;
     }
 
     .row {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(var(--word-length, 5), 1fr);
       gap: 8px;
     }
 
@@ -305,6 +366,29 @@
       animation: shakeRow 360ms ease;
     }
 
+    #history-panel {
+      padding: 16px;
+      border: 2px solid rgba(32, 36, 43, 0.12);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.76);
+      box-shadow: 0 12px 32px rgba(25, 32, 41, 0.08);
+    }
+
+    #history-panel h2 {
+      margin-bottom: 10px;
+    }
+
+    #history {
+      margin: 0;
+      padding-left: 22px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    #history li + li {
+      margin-top: 6px;
+    }
+
     @keyframes flipTile {
       0% {
         transform: rotateX(0);
@@ -347,6 +431,11 @@
         width: 100%;
       }
 
+      #settings,
+      #match-summary {
+        grid-template-columns: 1fr;
+      }
+
       #players {
         grid-template-columns: 1fr;
       }
@@ -381,8 +470,34 @@
     <header>
       <h1>Two-Player Wordle</h1>
       <div id="timer" aria-live="polite">30s</div>
-      <button id="restart" type="button">Restart</button>
     </header>
+
+    <section id="settings" aria-label="Match settings">
+      <label for="turn-seconds">
+        Turn time
+        <input id="turn-seconds" type="number" min="5" max="300" value="30" inputmode="numeric">
+      </label>
+
+      <label for="word-length">
+        Word length
+        <select id="word-length">
+          <option value="5" selected>5</option>
+          <option value="6">6</option>
+        </select>
+      </label>
+
+      <label for="wins-to-match">
+        Wins to match
+        <input id="wins-to-match" type="number" min="2" max="6" value="2" inputmode="numeric">
+      </label>
+
+      <button id="restart" type="button">Apply / Restart Match</button>
+    </section>
+
+    <section id="match-summary" aria-label="Match summary">
+      <div id="round-label" class="summary-item">Round 1</div>
+      <div id="score" class="summary-item">Player 1: 0 | Player 2: 0</div>
+    </section>
 
     <div id="message" aria-live="polite">Player 1's turn.</div>
 
@@ -405,39 +520,74 @@
         <section class="keyboard" data-keyboard="1" aria-label="Player 2 keyboard"></section>
       </article>
     </section>
+
+    <section id="history-panel" aria-label="Round history">
+      <h2>Round History</h2>
+      <ol id="history">
+        <li>No rounds yet.</li>
+      </ol>
+    </section>
   </main>
 
   <script>
-    const WORDS = [
-      "apple", "baker", "cider", "delta", "eagle",
-      "flame", "grape", "house", "ivory", "joker",
-      "knife", "lemon", "mango", "night", "ocean",
-      "piano", "queen", "river", "stone", "table",
-      "unity", "vivid", "waltz", "xenon", "youth", "zebra"
-    ];
+    const WORD_BANKS = {
+      5: [
+        "apple", "baker", "cider", "delta", "eagle",
+        "flame", "grape", "house", "ivory", "joker",
+        "knife", "lemon", "mango", "night", "ocean",
+        "piano", "queen", "river", "stone", "table",
+        "unity", "vivid", "waltz", "xenon", "youth", "zebra"
+      ],
+      6: [
+        "planet", "silver", "castle", "orange", "garden",
+        "stream", "bridge", "flower", "rocket", "summer",
+        "winter", "little", "forest", "animal", "bright",
+        "future", "circle", "travel", "wonder", "school",
+        "friend", "yellow", "purple", "camera", "market", "letter"
+      ]
+    };
 
     const PLAYER_COUNT = 2;
     const MAX_ATTEMPTS = 6;
-    const WORD_LENGTH = 5;
-    const TURN_SECONDS = 30;
+    const MIN_TURN_SECONDS = 5;
+    const MAX_TURN_SECONDS = 300;
+    const MIN_WINS_TO_MATCH = 2;
+    const MAX_WINS_TO_MATCH = 6;
     const KEY_ROWS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
     const STATUS_RANK = { absent: 1, present: 2, correct: 3 };
 
     const message = document.getElementById("message");
     const restartButton = document.getElementById("restart");
     const timerDisplay = document.getElementById("timer");
+    const turnSecondsInput = document.getElementById("turn-seconds");
+    const wordLengthSelect = document.getElementById("word-length");
+    const winsToMatchInput = document.getElementById("wins-to-match");
+    const roundLabel = document.getElementById("round-label");
+    const scoreDisplay = document.getElementById("score");
+    const historyList = document.getElementById("history");
     const playerPanels = Array.from(document.querySelectorAll(".player"));
     const boards = Array.from(document.querySelectorAll(".board"));
     const keyboards = Array.from(document.querySelectorAll(".keyboard"));
     const attemptLabels = Array.from(document.querySelectorAll("[data-attempts]"));
 
+    let settings = {
+      turnSeconds: 30,
+      wordLength: 5,
+      winsToMatch: 2
+    };
     let answer = "";
     let activePlayer = 0;
-    let gameOver = false;
-    let secondsLeft = TURN_SECONDS;
+    let roundOver = false;
+    let matchOver = false;
+    let inputLocked = false;
+    let secondsLeft = settings.turnSeconds;
     let timerId = null;
     let players = [];
     let sharedKeyStatuses = {};
+    let matchScores = [0, 0];
+    let roundNumber = 1;
+    let roundHistory = [];
+    let matchId = 0;
 
     function createPlayerState() {
       return {
@@ -446,18 +596,68 @@
       };
     }
 
-    function startGame() {
-      answer = WORDS[Math.floor(Math.random() * WORDS.length)].toUpperCase();
+    function startMatch() {
+      pauseTimer();
+      matchId += 1;
+      settings = readSettings();
+      matchScores = [0, 0];
+      roundHistory = [];
+      roundNumber = 1;
+      matchOver = false;
+      renderHistory();
+      startRound("Round 1. Player 1's turn.");
+    }
+
+    function readSettings() {
+      const turnSeconds = clampNumber(
+        Number(turnSecondsInput.value),
+        MIN_TURN_SECONDS,
+        MAX_TURN_SECONDS,
+        30
+      );
+      const wordLength = Number(wordLengthSelect.value) === 6 ? 6 : 5;
+      const winsToMatch = clampNumber(
+        Number(winsToMatchInput.value),
+        MIN_WINS_TO_MATCH,
+        MAX_WINS_TO_MATCH,
+        2
+      );
+
+      turnSecondsInput.value = turnSeconds;
+      wordLengthSelect.value = String(wordLength);
+      winsToMatchInput.value = winsToMatch;
+
+      return { turnSeconds, wordLength, winsToMatch };
+    }
+
+    function clampNumber(value, min, max, fallback) {
+      if (!Number.isFinite(value)) {
+        return fallback;
+      }
+
+      return Math.min(max, Math.max(min, Math.round(value)));
+    }
+
+    function startRound(text) {
+      answer = chooseAnswer();
       activePlayer = 0;
-      gameOver = false;
+      roundOver = false;
+      inputLocked = false;
       players = Array.from({ length: PLAYER_COUNT }, createPlayerState);
       sharedKeyStatuses = {};
-      secondsLeft = TURN_SECONDS;
+      secondsLeft = settings.turnSeconds;
+      document.documentElement.style.setProperty("--word-length", settings.wordLength);
 
       buildBoards();
       buildKeyboards();
       updateAttempts();
-      setActivePlayer(0, "Player 1's turn.");
+      updateMatchSummary();
+      setActivePlayer(0, text);
+    }
+
+    function chooseAnswer() {
+      const words = WORD_BANKS[settings.wordLength];
+      return words[Math.floor(Math.random() * words.length)].toUpperCase();
     }
 
     function buildBoards() {
@@ -470,7 +670,7 @@
           row.dataset.player = playerIndex;
           row.dataset.row = rowIndex;
 
-          for (let colIndex = 0; colIndex < WORD_LENGTH; colIndex++) {
+          for (let colIndex = 0; colIndex < settings.wordLength; colIndex++) {
             const tile = document.createElement("div");
             tile.className = "tile";
             tile.dataset.player = playerIndex;
@@ -521,7 +721,7 @@
     }
 
     function handleKey(key, keyboardPlayer = activePlayer) {
-      if (gameOver) {
+      if (matchOver || roundOver || inputLocked) {
         return;
       }
 
@@ -548,7 +748,7 @@
     function addLetter(letter) {
       const player = players[activePlayer];
 
-      if (player.currentGuess.length >= WORD_LENGTH) {
+      if (player.currentGuess.length >= settings.wordLength) {
         return;
       }
 
@@ -570,7 +770,7 @@
     function updateCurrentRow(playerIndex) {
       const player = players[playerIndex];
 
-      for (let colIndex = 0; colIndex < WORD_LENGTH; colIndex++) {
+      for (let colIndex = 0; colIndex < settings.wordLength; colIndex++) {
         const tile = getTile(playerIndex, player.currentRow, colIndex);
         const letter = player.currentGuess[colIndex] || "";
         tile.textContent = letter;
@@ -581,21 +781,29 @@
     function submitGuess() {
       const player = players[activePlayer];
 
-      if (player.currentGuess.length !== WORD_LENGTH) {
+      if (player.currentGuess.length !== settings.wordLength) {
         setMessage("Not enough letters", "error");
         shakeRow(activePlayer, player.currentRow);
         return;
       }
 
+      inputLocked = true;
       pauseTimer();
+      const guessingPlayer = activePlayer;
       const submittedGuess = player.currentGuess;
+      const currentMatchId = matchId;
       const result = scoreGuess(submittedGuess, answer);
-      revealGuess(activePlayer, submittedGuess, result);
+      revealGuess(guessingPlayer, submittedGuess, result);
 
       if (submittedGuess === answer) {
-        gameOver = true;
         player.currentGuess = "";
-        setTimeout(() => setMessage(`Player ${activePlayer + 1} won!`, "strong"), 650);
+        setTimeout(() => {
+          if (currentMatchId !== matchId) {
+            return;
+          }
+
+          completeRound(guessingPlayer);
+        }, 650);
         return;
       }
 
@@ -604,25 +812,28 @@
       updateAttempts();
 
       setTimeout(() => {
-        if (gameOver) {
+        if (currentMatchId !== matchId) {
           return;
         }
 
-        if (isGameExhausted()) {
-          gameOver = true;
-          setMessage(`Game over. The answer was ${answer}.`, "strong");
+        if (roundOver || matchOver) {
           return;
         }
 
-        switchTurn(`Player ${activePlayer + 1} guessed ${submittedGuess}.`);
+        if (isRoundExhausted()) {
+          completeRound(null);
+          return;
+        }
+
+        switchTurn(`Player ${guessingPlayer + 1} guessed ${submittedGuess}.`);
       }, 650);
     }
 
     function scoreGuess(guess, target) {
-      const result = Array(WORD_LENGTH).fill("absent");
+      const result = Array(target.length).fill("absent");
       const remaining = {};
 
-      for (let index = 0; index < WORD_LENGTH; index++) {
+      for (let index = 0; index < target.length; index++) {
         if (guess[index] === target[index]) {
           result[index] = "correct";
         } else {
@@ -631,7 +842,7 @@
         }
       }
 
-      for (let index = 0; index < WORD_LENGTH; index++) {
+      for (let index = 0; index < target.length; index++) {
         const guessedLetter = guess[index];
 
         if (result[index] === "correct") {
@@ -666,7 +877,7 @@
       const player = players[playerIndex];
       const rowIndex = player.currentRow;
 
-      for (let colIndex = 0; colIndex < WORD_LENGTH; colIndex++) {
+      for (let colIndex = 0; colIndex < settings.wordLength; colIndex++) {
         const tile = getTile(playerIndex, rowIndex, colIndex);
         tile.textContent = "";
         tile.classList.remove("filled");
@@ -699,8 +910,7 @@
       const nextPlayer = getNextAvailablePlayer();
 
       if (nextPlayer === -1) {
-        gameOver = true;
-        setMessage(`Game over. The answer was ${answer}.`, "strong");
+        completeRound(null);
         return;
       }
 
@@ -722,16 +932,96 @@
 
     function setActivePlayer(playerIndex, text) {
       activePlayer = playerIndex;
-      secondsLeft = TURN_SECONDS;
+      secondsLeft = settings.turnSeconds;
+      inputLocked = false;
       updatePanels();
       updateTimerDisplay();
       setMessage(text);
       startTimer();
     }
 
+    function completeRound(winnerIndex) {
+      if (roundOver || matchOver) {
+        return;
+      }
+
+      pauseTimer();
+      roundOver = true;
+      inputLocked = true;
+
+      if (winnerIndex !== null) {
+        matchScores[winnerIndex] += 1;
+      }
+
+      recordRound(winnerIndex);
+
+      if (winnerIndex !== null && matchScores[winnerIndex] >= settings.winsToMatch) {
+        matchOver = true;
+        timerDisplay.textContent = "Done";
+        updateMatchSummary();
+        updatePanels();
+        setMessage(
+          `Player ${winnerIndex + 1} won the match ${matchScores[0]}-${matchScores[1]}!`,
+          "strong"
+        );
+        return;
+      }
+
+      updateMatchSummary();
+      updatePanels();
+      const resultText = winnerIndex === null
+        ? `Round ${roundNumber} was a draw. The answer was ${answer}.`
+        : `Player ${winnerIndex + 1} won round ${roundNumber}. The answer was ${answer}.`;
+
+      setMessage(`${resultText} Next round starting.`, "strong");
+      const currentMatchId = matchId;
+
+      setTimeout(() => {
+        if (currentMatchId !== matchId || matchOver) {
+          return;
+        }
+
+        roundNumber += 1;
+        startRound(`Round ${roundNumber}. Player 1's turn.`);
+      }, 1500);
+    }
+
+    function recordRound(winnerIndex) {
+      const result = winnerIndex === null ? "Draw" : `Player ${winnerIndex + 1} won`;
+      roundHistory.push({
+        number: roundNumber,
+        result,
+        answer,
+        score: [...matchScores]
+      });
+      renderHistory();
+    }
+
+    function renderHistory() {
+      historyList.innerHTML = "";
+
+      if (roundHistory.length === 0) {
+        const item = document.createElement("li");
+        item.textContent = "No rounds yet.";
+        historyList.appendChild(item);
+        return;
+      }
+
+      roundHistory.forEach((round) => {
+        const item = document.createElement("li");
+        item.textContent = `Round ${round.number}: ${round.result} - ${round.answer} (P1 ${round.score[0]}, P2 ${round.score[1]})`;
+        historyList.appendChild(item);
+      });
+    }
+
+    function updateMatchSummary() {
+      roundLabel.textContent = matchOver ? "Match complete" : `Round ${roundNumber}`;
+      scoreDisplay.textContent = `Player 1: ${matchScores[0]} | Player 2: ${matchScores[1]} | First to ${settings.winsToMatch}`;
+    }
+
     function updatePanels() {
       playerPanels.forEach((panel, playerIndex) => {
-        panel.classList.toggle("active", playerIndex === activePlayer && !gameOver);
+        panel.classList.toggle("active", playerIndex === activePlayer && !roundOver && !matchOver);
         panel.classList.toggle("finished", players[playerIndex].currentRow >= MAX_ATTEMPTS);
       });
     }
@@ -744,12 +1034,17 @@
       updatePanels();
     }
 
-    function isGameExhausted() {
+    function isRoundExhausted() {
       return players.every((player) => player.currentRow >= MAX_ATTEMPTS);
     }
 
     function startTimer() {
       pauseTimer();
+
+      if (roundOver || matchOver) {
+        return;
+      }
+
       timerId = setInterval(() => {
         secondsLeft -= 1;
         updateTimerDisplay();
@@ -772,17 +1067,17 @@
     }
 
     function handleTimeout() {
-      if (gameOver) {
+      if (matchOver || roundOver) {
         return;
       }
 
+      inputLocked = true;
       pauseTimer();
       const timedOutPlayer = activePlayer;
       markTimedOutGuess(timedOutPlayer);
 
-      if (isGameExhausted()) {
-        gameOver = true;
-        setMessage(`Game over. The answer was ${answer}.`, "strong");
+      if (isRoundExhausted()) {
+        completeRound(null);
         return;
       }
 
@@ -813,8 +1108,8 @@
       handleKey(event.key);
     });
 
-    restartButton.addEventListener("click", startGame);
-    startGame();
+    restartButton.addEventListener("click", startMatch);
+    startMatch();
   </script>
 </body>
 </html>
