@@ -26,7 +26,7 @@ Open `two-player.html` to play the turn-based two-player version.
 - Each player gets 6 guesses
 - The first player to guess correctly wins
 - If both players run out of guesses, the answer is revealed
-- Each turn has a 30-second timer
+- Each turn has a 30-second timer, and timing out costs one guess
 - Each player has a separate board and on-screen keyboard
 - Keyboard color hints are shared, so both players can use clues from every guess
 

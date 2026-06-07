@@ -662,6 +662,22 @@
       });
     }
 
+    function markTimedOutGuess(playerIndex) {
+      const player = players[playerIndex];
+      const rowIndex = player.currentRow;
+
+      for (let colIndex = 0; colIndex < WORD_LENGTH; colIndex++) {
+        const tile = getTile(playerIndex, rowIndex, colIndex);
+        tile.textContent = "";
+        tile.classList.remove("filled");
+        tile.classList.add("flip", "absent");
+      }
+
+      player.currentGuess = "";
+      player.currentRow += 1;
+      updateAttempts();
+    }
+
     function updateKeyStatus(letter, status) {
       const previous = sharedKeyStatuses[letter];
 
@@ -762,9 +778,15 @@
 
       pauseTimer();
       const timedOutPlayer = activePlayer;
-      players[timedOutPlayer].currentGuess = "";
-      updateCurrentRow(timedOutPlayer);
-      switchTurn(`Player ${timedOutPlayer + 1} ran out of time.`);
+      markTimedOutGuess(timedOutPlayer);
+
+      if (isGameExhausted()) {
+        gameOver = true;
+        setMessage(`Game over. The answer was ${answer}.`, "strong");
+        return;
+      }
+
+      switchTurn(`Player ${timedOutPlayer + 1} ran out of time and lost a guess.`);
     }
 
     function getTile(playerIndex, row, col) {
