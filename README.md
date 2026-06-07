@@ -1,25 +1,54 @@
-# Wordle Mini Game
+# Wordle Mini Games
 
-A complete Wordle-style mini-game built in a single `index.html` file.
+A small collection of Wordle-style browser games built with plain HTML, CSS, and JavaScript.
+
+No build step, no dependencies, no server, and no database. Open either HTML file directly in a modern browser and play.
+
+## Games
+
+### Single-Player Wordle
+
+Open `index.html` to play the original solo version.
+
+- One hidden 5-letter word
+- 6 guesses
+- Physical keyboard support
+- On-screen keyboard
+- Restart button
+- Tile colors and keyboard colors update after each guess
+
+### Two-Player Wordle
+
+Open `two-player.html` to play the turn-based two-player version.
+
+- Two players guess the same hidden 5-letter word
+- Players take turns making one guess at a time
+- Each player gets 6 guesses
+- The first player to guess correctly wins
+- If both players run out of guesses, the answer is revealed
+- Each turn has a 30-second timer
+- Each player has a separate board and on-screen keyboard
 
 ## How to Play
 
-1. Open `index.html` in any modern web browser.
-2. Guess the hidden 5-letter word in 6 attempts or fewer.
-3. Type with your physical keyboard or use the on-screen keyboard.
-4. Press `Enter` to submit a guess.
-5. Press `Backspace` or `Del` to remove a letter.
-6. Use `Restart` to start a new game.
+1. Double-click `index.html` or `two-player.html`.
+2. Type a 5-letter guess with your physical keyboard or the on-screen keyboard.
+3. Press `Enter` to submit.
+4. Press `Backspace` or `Del` to remove a letter.
+5. Use `Restart` to start a new game.
 
 ## Tile Colors
 
-- Green means the letter is correct and in the correct position.
-- Yellow means the letter is in the word but in the wrong position.
-- Gray means the letter is not in the word.
+- Green: the letter is correct and in the correct position.
+- Yellow: the letter is in the word but in the wrong position.
+- Gray: the letter is not in the word.
 
 ## Implementation Notes
 
-- The game uses only HTML, CSS, and JavaScript.
-- All code lives inside `index.html`.
-- There are no external libraries, npm packages, backend services, or databases.
-- Duplicate letters are scored with a two-pass algorithm so repeated letters are handled correctly.
+- All HTML, CSS, and JavaScript are kept inside the HTML files.
+- The games use a predefined list of 5-letter words.
+- Duplicate letters are handled with a two-pass scoring algorithm:
+  - First mark exact matches as green.
+  - Count the remaining unmatched letters in the answer.
+  - Mark yellow only when a guessed letter still exists in the remaining unmatched letters.
+  - Mark all other letters gray.

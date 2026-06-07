@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Two-Player Wordle</title>
+  <style>
+    :root {
+      --bg: #f4f5f0;
+      --panel: #ffffff;
+      --panel-active: #f8fbff;
+      --text: #20242b;
+      --muted: #65707c;
+      --border: #c8ced7;
+      --border-strong: #2f3946;
+      --empty: #ffffff;
+      --green: #3f7f58;
+      --yellow: #b59b35;
+      --gray: #6b7280;
+      --key: #d8dde5;
+      --key-hover: #c9d0da;
+      --accent: #2f6690;
+      --danger: #a63446;
+      --shadow: 0 18px 44px rgba(25, 32, 41, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(135deg, rgba(63, 127, 88, 0.11), transparent 30%),
+        linear-gradient(315deg, rgba(47, 102, 144, 0.14), transparent 28%),
+        var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      padding: 24px 16px;
+    }
+
+    main {
+      width: min(100%, 1120px);
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 16px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid rgba(32, 36, 43, 0.12);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.65rem, 4vw, 2.4rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    button {
+      border: 0;
+      border-radius: 6px;
+      font: inherit;
+      font-weight: 700;
+      color: var(--text);
+      cursor: pointer;
+      transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:focus-visible {
+      outline: 3px solid rgba(47, 102, 144, 0.35);
+      outline-offset: 2px;
+    }
+
+    #timer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 96px;
+      height: 42px;
+      border: 2px solid var(--border-strong);
+      border-radius: 6px;
+      background: var(--panel);
+      font-size: 1.1rem;
+      font-weight: 800;
+      box-shadow: 0 8px 20px rgba(25, 32, 41, 0.08);
+    }
+
+    #restart {
+      min-width: 90px;
+      height: 42px;
+      padding: 0 15px;
+      background: var(--text);
+      color: white;
+    }
+
+    #message {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 12px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: var(--shadow);
+      color: var(--muted);
+      font-size: 1rem;
+      text-align: center;
+    }
+
+    #message.strong {
+      color: var(--text);
+      font-weight: 800;
+    }
+
+    #message.error {
+      color: var(--danger);
+      font-weight: 800;
+    }
+
+    #players {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+      align-items: start;
+    }
+
+    .player {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+      padding: 18px;
+      border: 2px solid rgba(32, 36, 43, 0.12);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: 0 12px 32px rgba(25, 32, 41, 0.08);
+      transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+    }
+
+    .player.active {
+      border-color: var(--accent);
+      background: var(--panel-active);
+      transform: translateY(-2px);
+    }
+
+    .player.finished {
+      opacity: 0.82;
+    }
+
+    .player-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .attempts {
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .board {
+      display: grid;
+      grid-template-rows: repeat(6, 1fr);
+      gap: 8px;
+      width: min(100%, 330px);
+      aspect-ratio: 5 / 6.45;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .tile {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      aspect-ratio: 1 / 1;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      background: var(--empty);
+      color: var(--text);
+      font-size: clamp(1.3rem, 5vw, 2.05rem);
+      font-weight: 800;
+      text-transform: uppercase;
+      line-height: 1;
+      user-select: none;
+      box-shadow: 0 8px 18px rgba(27, 31, 36, 0.07);
+      transition: border-color 120ms ease, transform 120ms ease;
+    }
+
+    .tile.filled {
+      border-color: #87919f;
+      transform: scale(1.02);
+    }
+
+    .tile.flip {
+      animation: flipTile 520ms ease forwards;
+    }
+
+    .tile.correct,
+    .tile.present,
+    .tile.absent {
+      border-color: transparent;
+      color: white;
+    }
+
+    .tile.correct {
+      background: var(--green);
+    }
+
+    .tile.present {
+      background: var(--yellow);
+    }
+
+    .tile.absent {
+      background: var(--gray);
+    }
+
+    .keyboard {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .player:not(.active) .keyboard {
+      opacity: 0.54;
+    }
+
+    .keyboard-row {
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .key {
+      min-width: 0;
+      flex: 1;
+      height: 45px;
+      padding: 0 4px;
+      background: var(--key);
+      font-size: 0.86rem;
+      text-transform: uppercase;
+      border-radius: 6px;
+    }
+
+    .key:hover {
+      background: var(--key-hover);
+    }
+
+    .key.wide {
+      flex: 1.55;
+      font-size: 0.72rem;
+    }
+
+    .key.correct,
+    .key.present,
+    .key.absent {
+      color: white;
+    }
+
+    .key.correct {
+      background: var(--green);
+    }
+
+    .key.present {
+      background: var(--yellow);
+    }
+
+    .key.absent {
+      background: var(--gray);
+    }
+
+    .row.shake {
+      animation: shakeRow 360ms ease;
+    }
+
+    @keyframes flipTile {
+      0% {
+        transform: rotateX(0);
+      }
+      48% {
+        transform: rotateX(90deg);
+      }
+      52% {
+        transform: rotateX(90deg);
+      }
+      100% {
+        transform: rotateX(0);
+      }
+    }
+
+    @keyframes shakeRow {
+      0%, 100% {
+        transform: translateX(0);
+      }
+      20%, 60% {
+        transform: translateX(-7px);
+      }
+      40%, 80% {
+        transform: translateX(7px);
+      }
+    }
+
+    @media (max-width: 760px) {
+      body {
+        padding: 18px 10px;
+      }
+
+      header {
+        grid-template-columns: 1fr;
+        justify-items: stretch;
+      }
+
+      #timer,
+      #restart {
+        width: 100%;
+      }
+
+      #players {
+        grid-template-columns: 1fr;
+      }
+
+      .player {
+        padding: 14px 10px;
+      }
+
+      .board {
+        width: min(100%, 315px);
+        gap: 6px;
+      }
+
+      .row {
+        gap: 6px;
+      }
+
+      .key {
+        height: 42px;
+        padding: 0 3px;
+        font-size: 0.78rem;
+      }
+
+      .key.wide {
+        font-size: 0.68rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Two-Player Wordle</h1>
+      <div id="timer" aria-live="polite">30s</div>
+      <button id="restart" type="button">Restart</button>
+    </header>
+
+    <div id="message" aria-live="polite">Player 1's turn.</div>
+
+    <section id="players" aria-label="Two-player Wordle game">
+      <article class="player" data-player="0">
+        <div class="player-header">
+          <h2>Player 1</h2>
+          <div class="attempts" data-attempts="0">0 / 6 guesses</div>
+        </div>
+        <section class="board" data-board="0" aria-label="Player 1 board"></section>
+        <section class="keyboard" data-keyboard="0" aria-label="Player 1 keyboard"></section>
+      </article>
+
+      <article class="player" data-player="1">
+        <div class="player-header">
+          <h2>Player 2</h2>
+          <div class="attempts" data-attempts="1">0 / 6 guesses</div>
+        </div>
+        <section class="board" data-board="1" aria-label="Player 2 board"></section>
+        <section class="keyboard" data-keyboard="1" aria-label="Player 2 keyboard"></section>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const WORDS = [
+      "apple", "baker", "cider", "delta", "eagle",
+      "flame", "grape", "house", "ivory", "joker",
+      "knife", "lemon", "mango", "night", "ocean",
+      "piano", "queen", "river", "stone", "table",
+      "unity", "vivid", "waltz", "xenon", "youth", "zebra"
+    ];
+
+    const PLAYER_COUNT = 2;
+    const MAX_ATTEMPTS = 6;
+    const WORD_LENGTH = 5;
+    const TURN_SECONDS = 30;
+    const KEY_ROWS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
+    const STATUS_RANK = { absent: 1, present: 2, correct: 3 };
+
+    const message = document.getElementById("message");
+    const restartButton = document.getElementById("restart");
+    const timerDisplay = document.getElementById("timer");
+    const playerPanels = Array.from(document.querySelectorAll(".player"));
+    const boards = Array.from(document.querySelectorAll(".board"));
+    const keyboards = Array.from(document.querySelectorAll(".keyboard"));
+    const attemptLabels = Array.from(document.querySelectorAll("[data-attempts]"));
+
+    let answer = "";
+    let activePlayer = 0;
+    let gameOver = false;
+    let secondsLeft = TURN_SECONDS;
+    let timerId = null;
+    let players = [];
+
+    function createPlayerState() {
+      return {
+        currentGuess: "",
+        currentRow: 0,
+        keyStatuses: {}
+      };
+    }
+
+    function startGame() {
+      answer = WORDS[Math.floor(Math.random() * WORDS.length)].toUpperCase();
+      activePlayer = 0;
+      gameOver = false;
+      players = Array.from({ length: PLAYER_COUNT }, createPlayerState);
+      secondsLeft = TURN_SECONDS;
+
+      buildBoards();
+      buildKeyboards();
+      updateAttempts();
+      setActivePlayer(0, "Player 1's turn.");
+    }
+
+    function buildBoards() {
+      boards.forEach((board, playerIndex) => {
+        board.innerHTML = "";
+
+        for (let rowIndex = 0; rowIndex < MAX_ATTEMPTS; rowIndex++) {
+          const row = document.createElement("div");
+          row.className = "row";
+          row.dataset.player = playerIndex;
+          row.dataset.row = rowIndex;
+
+          for (let colIndex = 0; colIndex < WORD_LENGTH; colIndex++) {
+            const tile = document.createElement("div");
+            tile.className = "tile";
+            tile.dataset.player = playerIndex;
+            tile.dataset.row = rowIndex;
+            tile.dataset.col = colIndex;
+            row.appendChild(tile);
+          }
+
+          board.appendChild(row);
+        }
+      });
+    }
+
+    function buildKeyboards() {
+      keyboards.forEach((keyboard, playerIndex) => {
+        keyboard.innerHTML = "";
+
+        KEY_ROWS.forEach((letters, rowIndex) => {
+          const row = document.createElement("div");
+          row.className = "keyboard-row";
+
+          if (rowIndex === 2) {
+            row.appendChild(createKey(playerIndex, "Enter", "Enter", true));
+          }
+
+          letters.split("").forEach((letter) => {
+            row.appendChild(createKey(playerIndex, letter, letter, false));
+          });
+
+          if (rowIndex === 2) {
+            row.appendChild(createKey(playerIndex, "Backspace", "Del", true));
+          }
+
+          keyboard.appendChild(row);
+        });
+      });
+    }
+
+    function createKey(playerIndex, value, label, isWide) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = isWide ? "key wide" : "key";
+      button.textContent = label;
+      button.dataset.player = playerIndex;
+      button.dataset.key = value;
+      button.addEventListener("click", () => handleKey(value, playerIndex));
+      return button;
+    }
+
+    function handleKey(key, keyboardPlayer = activePlayer) {
+      if (gameOver) {
+        return;
+      }
+
+      if (keyboardPlayer !== activePlayer) {
+        setMessage(`It is Player ${activePlayer + 1}'s turn.`);
+        return;
+      }
+
+      if (key === "Enter") {
+        submitGuess();
+        return;
+      }
+
+      if (key === "Backspace" || key === "Delete") {
+        removeLetter();
+        return;
+      }
+
+      if (/^[a-zA-Z]$/.test(key)) {
+        addLetter(key.toUpperCase());
+      }
+    }
+
+    function addLetter(letter) {
+      const player = players[activePlayer];
+
+      if (player.currentGuess.length >= WORD_LENGTH) {
+        return;
+      }
+
+      player.currentGuess += letter;
+      updateCurrentRow(activePlayer);
+    }
+
+    function removeLetter() {
+      const player = players[activePlayer];
+
+      if (player.currentGuess.length === 0) {
+        return;
+      }
+
+      player.currentGuess = player.currentGuess.slice(0, -1);
+      updateCurrentRow(activePlayer);
+    }
+
+    function updateCurrentRow(playerIndex) {
+      const player = players[playerIndex];
+
+      for (let colIndex = 0; colIndex < WORD_LENGTH; colIndex++) {
+        const tile = getTile(playerIndex, player.currentRow, colIndex);
+        const letter = player.currentGuess[colIndex] || "";
+        tile.textContent = letter;
+        tile.classList.toggle("filled", Boolean(letter));
+      }
+    }
+
+    function submitGuess() {
+      const player = players[activePlayer];
+
+      if (player.currentGuess.length !== WORD_LENGTH) {
+        setMessage("Not enough letters", "error");
+        shakeRow(activePlayer, player.currentRow);
+        return;
+      }
+
+      pauseTimer();
+      const submittedGuess = player.currentGuess;
+      const result = scoreGuess(submittedGuess, answer);
+      revealGuess(activePlayer, submittedGuess, result);
+
+      if (submittedGuess === answer) {
+        gameOver = true;
+        player.currentGuess = "";
+        setTimeout(() => setMessage(`Player ${activePlayer + 1} won!`, "strong"), 650);
+        return;
+      }
+
+      player.currentRow += 1;
+      player.currentGuess = "";
+      updateAttempts();
+
+      setTimeout(() => {
+        if (gameOver) {
+          return;
+        }
+
+        if (isGameExhausted()) {
+          gameOver = true;
+          setMessage(`Game over. The answer was ${answer}.`, "strong");
+          return;
+        }
+
+        switchTurn(`Player ${activePlayer + 1} guessed ${submittedGuess}.`);
+      }, 650);
+    }
+
+    function scoreGuess(guess, target) {
+      const result = Array(WORD_LENGTH).fill("absent");
+      const remaining = {};
+
+      for (let index = 0; index < WORD_LENGTH; index++) {
+        if (guess[index] === target[index]) {
+          result[index] = "correct";
+        } else {
+          const targetLetter = target[index];
+          remaining[targetLetter] = (remaining[targetLetter] || 0) + 1;
+        }
+      }
+
+      for (let index = 0; index < WORD_LENGTH; index++) {
+        const guessedLetter = guess[index];
+
+        if (result[index] === "correct") {
+          continue;
+        }
+
+        if (remaining[guessedLetter] > 0) {
+          result[index] = "present";
+          remaining[guessedLetter] -= 1;
+        }
+      }
+
+      return result;
+    }
+
+    function revealGuess(playerIndex, submittedGuess, result) {
+      const player = players[playerIndex];
+      const rowIndex = player.currentRow;
+
+      result.forEach((status, colIndex) => {
+        const tile = getTile(playerIndex, rowIndex, colIndex);
+        const letter = submittedGuess[colIndex];
+
+        setTimeout(() => {
+          tile.classList.add("flip", status);
+          updateKeyStatus(playerIndex, letter, status);
+        }, colIndex * 110);
+      });
+    }
+
+    function updateKeyStatus(playerIndex, letter, status) {
+      const player = players[playerIndex];
+      const previous = player.keyStatuses[letter];
+
+      if (!previous || STATUS_RANK[status] > STATUS_RANK[previous]) {
+        player.keyStatuses[letter] = status;
+      }
+
+      const key = keyboards[playerIndex].querySelector(`[data-key="${letter}"]`);
+
+      if (key) {
+        key.classList.remove("absent", "present", "correct");
+        key.classList.add(player.keyStatuses[letter]);
+      }
+    }
+
+    function switchTurn(prefixMessage) {
+      const nextPlayer = getNextAvailablePlayer();
+
+      if (nextPlayer === -1) {
+        gameOver = true;
+        setMessage(`Game over. The answer was ${answer}.`, "strong");
+        return;
+      }
+
+      const nextMessage = `Player ${nextPlayer + 1}'s turn.`;
+      setActivePlayer(nextPlayer, prefixMessage ? `${prefixMessage} ${nextMessage}` : nextMessage);
+    }
+
+    function getNextAvailablePlayer() {
+      for (let offset = 1; offset <= PLAYER_COUNT; offset++) {
+        const candidate = (activePlayer + offset) % PLAYER_COUNT;
+
+        if (players[candidate].currentRow < MAX_ATTEMPTS) {
+          return candidate;
+        }
+      }
+
+      return -1;
+    }
+
+    function setActivePlayer(playerIndex, text) {
+      activePlayer = playerIndex;
+      secondsLeft = TURN_SECONDS;
+      updatePanels();
+      updateTimerDisplay();
+      setMessage(text);
+      startTimer();
+    }
+
+    function updatePanels() {
+      playerPanels.forEach((panel, playerIndex) => {
+        panel.classList.toggle("active", playerIndex === activePlayer && !gameOver);
+        panel.classList.toggle("finished", players[playerIndex].currentRow >= MAX_ATTEMPTS);
+      });
+    }
+
+    function updateAttempts() {
+      attemptLabels.forEach((label, playerIndex) => {
+        const guesses = players[playerIndex].currentRow;
+        label.textContent = `${guesses} / ${MAX_ATTEMPTS} guesses`;
+      });
+      updatePanels();
+    }
+
+    function isGameExhausted() {
+      return players.every((player) => player.currentRow >= MAX_ATTEMPTS);
+    }
+
+    function startTimer() {
+      pauseTimer();
+      timerId = setInterval(() => {
+        secondsLeft -= 1;
+        updateTimerDisplay();
+
+        if (secondsLeft <= 0) {
+          handleTimeout();
+        }
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      if (timerId) {
+        clearInterval(timerId);
+        timerId = null;
+      }
+    }
+
+    function updateTimerDisplay() {
+      timerDisplay.textContent = `${secondsLeft}s`;
+    }
+
+    function handleTimeout() {
+      if (gameOver) {
+        return;
+      }
+
+      pauseTimer();
+      const timedOutPlayer = activePlayer;
+      players[timedOutPlayer].currentGuess = "";
+      updateCurrentRow(timedOutPlayer);
+      switchTurn(`Player ${timedOutPlayer + 1} ran out of time.`);
+    }
+
+    function getTile(playerIndex, row, col) {
+      return boards[playerIndex].querySelector(`[data-row="${row}"][data-col="${col}"]`);
+    }
+
+    function shakeRow(playerIndex, rowIndex) {
+      const row = boards[playerIndex].querySelector(`[data-row="${rowIndex}"]`);
+      row.classList.remove("shake");
+      void row.offsetWidth;
+      row.classList.add("shake");
+    }
+
+    function setMessage(text, tone) {
+      message.textContent = text;
+      message.className = tone || "";
+    }
+
+    document.addEventListener("keydown", (event) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      handleKey(event.key);
+    });
+
+    restartButton.addEventListener("click", startGame);
+    startGame();
+  </script>
+</body>
+</html>
